@@ -1,3 +1,4 @@
+<!doctype html>
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -42,7 +43,7 @@ header.top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bott
 .tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px}
 label{display:block;font-size:12px;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
-input[type=text],input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+input[type=text],input[type=number],select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .row>*{min-width:0}
 .btn{padding:10px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font:inherit;font-weight:700;cursor:pointer}
@@ -94,8 +95,22 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
       <h2>製作你的賓果卡</h2>
       <p class="note">填上姓名，然後隨機產生或自己選號。送出後就不能再修改。</p>
       <div class="hr"></div>
-      <label for="pname">姓名 / 部門</label>
-      <input type="text" id="pname" maxlength="20" placeholder="例：杜小傑/心衛科">
+      <div class="row">
+        <div style="flex:1 1 150px">
+          <label for="pname">姓名</label>
+          <input type="text" id="pname" maxlength="20" placeholder="例：杜小傑">
+        </div>
+        <div style="flex:1 1 150px">
+          <label for="punit">單位</label>
+          <select id="punit">
+            <option value="">請選擇單位</option>
+            <option>心理精神股</option>
+            <option>成癮防治股</option>
+            <option>特殊處遇股</option>
+            <option>心衛中心股</option>
+          </select>
+        </div>
+      </div>
       <div class="row" style="margin-top:12px">
         <button class="btn" id="btnRandom">隨機產生</button>
         <button class="btn ghost" id="btnManual">自己選號</button>
@@ -153,8 +168,12 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
         <div class="hr"></div>
         <div class="row">
           <button class="btn ghost" id="btnUndo">收回上一個號碼</button>
-          <button class="btn ghost" id="btnReset">清空重新開始</button>
+          <button class="btn ghost" id="btnReset">只清空號碼</button>
         </div>
+        <div class="hr"></div>
+        <p class="note">下面這顆會刪掉所有人的賓果卡，並讓每支手機上的卡片一起消失、回到建卡畫面。整場重來時才用。</p>
+        <button class="btn" id="btnWipe" style="margin-top:8px">清空所有裝置紀錄</button>
+        <p class="err" id="wipeMsg" hidden></p>
       </div>
 
       <div class="panel">
@@ -181,11 +200,9 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
   const SUPABASE_URL  = "https://opvnnnmrbqwduratnbbq.supabase.co";
   const SUPABASE_ANON = "sb_publishable_iyC2JMQ_QgTDyy3hKPITHA_UqXKg5Fs";
   const HOST_PASS     = "u10111103@116";
-
-
   /* =============================== */
 
-  const MAXN=50, SIZE=16, LS_KEY="bingo_player_id";
+  const MAXN=50, SIZE=16, LS_KEY="bingo_player_id", LS_RESET="bingo_reset_at";
   const LINES=(function(){const L=[];
     for(let r=0;r<4;r++)L.push([0,1,2,3].map(c=>r*4+c));
     for(let c=0;c<4;c++)L.push([0,1,2,3].map(r=>r*4+c));
@@ -280,9 +297,11 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
     $("pickArea").hidden=false;$("pickHint").hidden=false;renderPool();renderPreview();};
 
   $("btnSave").onclick=async()=>{
-    const name=$("pname").value.trim();
+    const who=$("pname").value.trim(), unit=$("punit").value;
     const err=$("saveErr");
-    if(!name){err.hidden=false;err.textContent="請先填寫姓名。";return;}
+    if(!who){err.hidden=false;err.textContent="請先填寫姓名。";return;}
+    if(!unit){err.hidden=false;err.textContent="請選擇單位。";return;}
+    const name=who+"/"+unit;
     const nums=pick.slice();
     if(nums.some(v=>v==null)||new Set(nums).size!==SIZE){
       err.hidden=false;err.textContent="16 格都要填滿且號碼不重複。";return;}
@@ -323,8 +342,52 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
   $("btnReset").onclick=()=>{
     if(!armed){armed=true;$("btnReset").textContent="再按一次確認清空";
       setTimeout(()=>{armed=false;$("btnReset").textContent="清空重新開始";},4000);return;}
-    armed=false;$("btnReset").textContent="清空重新開始";saveDrawn([]);
+    armed=false;$("btnReset").textContent="只清空號碼";saveDrawn([]);
   };
+
+  let wipeArmed=false;
+  $("btnWipe").onclick=async()=>{
+    const msg=$("wipeMsg");
+    if(!wipeArmed){
+      wipeArmed=true;$("btnWipe").textContent="再按一次確認全部刪除";
+      setTimeout(()=>{wipeArmed=false;$("btnWipe").textContent="清空所有裝置紀錄";},5000);
+      return;
+    }
+    wipeArmed=false;$("btnWipe").textContent="清空所有裝置紀錄";
+    $("btnWipe").disabled=true;msg.hidden=true;
+    const d=await sb.from("players").delete().not("id","is",null);
+    if(d.error){msg.hidden=false;msg.textContent="刪除失敗："+d.error.message;$("btnWipe").disabled=false;return;}
+    const stamp=new Date().toISOString();
+    const u=await sb.from("game").update({drawn:[],reset_at:stamp,updated_at:stamp}).eq("id",1);
+    if(u.error){msg.hidden=false;msg.textContent="重置失敗："+u.error.message;$("btnWipe").disabled=false;return;}
+    ls.set(LS_RESET,stamp);ls.set(LS_KEY,"");
+    allCards=[];drawn=[];myNums=null;myNameVal="";
+    $("myCard").hidden=true;$("makeCard").hidden=false;
+    pick=new Array(SIZE).fill(null);manualMode=false;selSlot=0;
+    $("pickArea").hidden=true;$("pickHint").hidden=true;
+    $("pname").value="";$("punit").value="";
+    renderPreview();renderAll();
+    $("btnWipe").disabled=false;
+    msg.hidden=false;msg.style.color="var(--good)";msg.textContent="已清空，所有手機會在幾秒內回到建卡畫面。";
+  };
+
+  function applyReset(stamp){
+    if(!stamp)return false;
+    const seen=ls.get(LS_RESET);
+    if(seen===stamp)return false;
+    ls.set(LS_RESET,stamp);
+    if(seen!==null&&seen!==""){
+      ls.set(LS_KEY,"");
+      myNums=null;myNameVal="";allCards=[];
+      $("myCard").hidden=true;$("makeCard").hidden=false;
+      pick=new Array(SIZE).fill(null);manualMode=false;selSlot=0;
+      $("pickArea").hidden=true;$("pickHint").hidden=true;
+      $("btnSave").disabled=true;
+      renderPreview();
+      return true;
+    }
+    return false;
+  }
 
   function renderHost(){
     if(!unlocked)return;
@@ -366,9 +429,10 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
       if(SUPABASE_URL.indexOf("你的")>=0){bootFail("尚未填入 Supabase 連線資訊，請打開檔案修改最上方三行設定。");return;}
       sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
 
-      const g=await sb.from("game").select("drawn").eq("id",1).single();
+      const g=await sb.from("game").select("drawn,reset_at").eq("id",1).single();
       if(g.error){bootFail("連線失敗："+g.error.message);return;}
       drawn=g.data.drawn||[];
+      applyReset(g.data.reset_at);
 
       const p=await sb.from("players").select("id,name,nums");
       if(p.error){bootFail("讀取名單失敗："+p.error.message);return;}
@@ -384,22 +448,26 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 
       sb.channel("bingo")
         .on("postgres_changes",{event:"UPDATE",schema:"public",table:"game"},
-          pay=>{drawn=(pay.new&&pay.new.drawn)||[];renderAll();})
+          pay=>{
+            if(!pay.new)return;
+            drawn=pay.new.drawn||[];
+            if(applyReset(pay.new.reset_at))allCards=[];
+            renderAll();
+          })
         .on("postgres_changes",{event:"INSERT",schema:"public",table:"players"},
           pay=>{if(pay.new){allCards.push(pay.new);renderHost();}})
         .subscribe();
 
       // 保險：每 20 秒對一次，避免推播漏掉
       setInterval(async()=>{
-        const r=await sb.from("game").select("drawn").eq("id",1).single();
+        const r=await sb.from("game").select("drawn,reset_at").eq("id",1).single();
         if(!r.error&&r.data){
           const nd=r.data.drawn||[];
-          if(nd.length!==drawn.length){drawn=nd;renderAll();}
+          const wiped=applyReset(r.data.reset_at);
+          if(wiped||nd.length!==drawn.length){drawn=nd;if(wiped)allCards=[];renderAll();}
         }
-        if(unlocked){
-          const q=await sb.from("players").select("id,name,nums");
-          if(!q.error&&q.data&&q.data.length!==allCards.length){allCards=q.data;renderHost();}
-        }
+        const q=await sb.from("players").select("id,name,nums");
+        if(!q.error&&q.data&&q.data.length!==allCards.length){allCards=q.data;renderHost();}
       },20000);
 
       renderPreview();renderAll();
@@ -411,4 +479,3 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 </script>
 </body>
 </html>
-
