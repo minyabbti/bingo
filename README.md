@@ -179,7 +179,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
   "use strict";
 
   /* ========= 只要改這三行 ========= */
-  const SUPABASE_URL  = "https://opvnnnmrbqwduratnbbq.supabase.co/rest/v1/";
+  const SUPABASE_URL  = "https://opvnnnmrbqwduratnbbq.supabase.co";
   const SUPABASE_ANON = "sb_publishable_iyC2JMQ_QgTDyy3hKPITHA_UqXKg5Fs";
   const HOST_PASS     = "u10111103@116";
 
