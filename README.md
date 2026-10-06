@@ -98,7 +98,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
       <div class="row">
         <div style="flex:1 1 150px">
           <label for="pname">姓名</label>
-          <input type="text" id="pname" maxlength="20" placeholder="例：杜小傑">
+          <input type="text" id="pname" maxlength="20" placeholder="例：杜小傑(領獎時需確認姓名與證件一致)">
         </div>
         <div style="flex:1 1 150px">
           <label for="punit">單位</label>
